@@ -1,0 +1,7 @@
+numpy
+scikit-learn
+mlflow>=1.0
+flask>=2.0.0
+gunicorn>=20.1.0
+pytest>=6.0.0
+pytest-cov>=2.0.0 

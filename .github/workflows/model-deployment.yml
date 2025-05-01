@@ -1,0 +1,86 @@
+name: Model Training and Deployment
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  train-and-register:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install pytest pytest-cov
+    
+    - name: Run tests
+      run: |
+        pytest --cov=./ --cov-report=xml
+    
+    - name: Train model
+      run: |
+        python simple_ml_pipeline.py
+    
+    - name: Register model
+      run: |
+        python model_registry.py
+    
+    - name: Archive MLflow artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: mlflow-artifacts
+        path: mlruns/
+    
+  deploy-model:
+    needs: train-and-register
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install flask gunicorn
+    
+    - name: Download MLflow artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: mlflow-artifacts
+        path: mlruns/
+    
+    - name: Build Docker image
+      run: |
+        docker build -t iris-prediction-api -f Dockerfile.api .
+    
+    # Here you would normally push to a registry and deploy
+    # Example (commented out):
+    # - name: Push to registry
+    #   run: |
+    #     echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+    #     docker tag iris-prediction-api yourusername/iris-prediction-api:latest
+    #     docker push yourusername/iris-prediction-api:latest
+    
+    # - name: Deploy to production
+    #   run: |
+    #     # Deploy commands here - could be kubectl, AWS CLI, etc.
+    #     echo "Deploying to production environment" 
