@@ -3,6 +3,10 @@ import numpy as np
 from sklearn.datasets import load_iris
 import mlflow.pyfunc
 import os
+import sys
+
+# Add the parent directory to the path so we can import from the root
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 def test_model_prediction():
     """Test that a model loaded from MLflow can make predictions."""

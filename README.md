@@ -13,11 +13,13 @@ This project demonstrates a complete ML workflow from development to deployment:
 - `simple_ml_pipeline.py` - Main ML pipeline script
 - `model_registry.py` - Registers models in MLflow Model Registry
 - `model_api.py` - Flask API for model predictions
-- `test_model.py` - Tests for the trained model
-- `test_simple_ml_pipeline.py` - Unit tests for ML pipeline components
-- `test_model_evaluation.py` - Tests for model evaluation and hyperparameter tuning
-- `test_data_validation.py` - Tests for data quality and validation
-- `test_mlflow_integration.py` - Tests for MLflow tracking and registry integration
+- `tests/` - Test directory containing:
+  - `test_simple_ml_pipeline.py` - Unit tests for ML pipeline components
+  - `test_model_evaluation.py` - Tests for model evaluation and hyperparameter tuning
+  - `test_data_validation.py` - Tests for data quality and validation
+  - `test_mlflow_integration.py` - Tests for MLflow tracking and registry integration
+  - `test_model.py` - Tests for model loading and prediction
+  - `conftest.py` - Common test fixtures and utilities
 - `Dockerfile` - Container for training pipeline
 - `Dockerfile.api` - Container for prediction API
 - `.github/workflows/model-deployment.yml` - CI/CD workflow
@@ -63,14 +65,18 @@ mlflow ui
 The project includes comprehensive tests for different aspects of the ML pipeline:
 
 ```bash
-# Run all tests
-python -m unittest discover
+# Run all tests with pytest
+pytest tests/
 
-# Run specific test modules
-python -m unittest test_simple_ml_pipeline.py    # Basic pipeline components
-python -m unittest test_model_evaluation.py      # Model evaluation and tuning
-python -m unittest test_data_validation.py       # Data quality checks
-python -m unittest test_mlflow_integration.py    # MLflow integration
+# Run all tests with unittest
+python -m unittest discover tests
+
+# Run specific test modules with pytest
+pytest tests/test_simple_ml_pipeline.py    # Basic pipeline components
+pytest tests/test_model_evaluation.py      # Model evaluation and tuning
+pytest tests/test_data_validation.py       # Data quality checks
+pytest tests/test_mlflow_integration.py    # MLflow integration
+pytest tests/test_model.py                 # Model loading and predictions
 ```
 
 #### Test Coverage
@@ -80,12 +86,12 @@ python -m unittest test_mlflow_integration.py    # MLflow integration
 - **Data Validation**: Test data quality, distributions, correlations, and feature relevance
 - **MLflow Integration**: Test experiment tracking, model registry, and model loading
 
-Running the `test_model_evaluation.py` and `test_data_validation.py` scripts directly (not via unittest) will generate visualizations:
+Running the following test scripts directly will generate visualizations:
 
 ```bash
 # Generate evaluation visualizations
-python test_model_evaluation.py
-python test_data_validation.py
+python tests/test_model_evaluation.py
+python tests/test_data_validation.py
 ```
 
 ### Serving Predictions

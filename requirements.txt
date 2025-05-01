@@ -1,7 +1,19 @@
 numpy
-scikit-learn
-mlflow>=1.0
+scikit-learn>=1.0.0
+mlflow>=1.0.0
 flask>=2.0.0
 gunicorn>=20.1.0
 pytest>=6.0.0
-pytest-cov>=2.0.0 
+pytest-cov>=2.0.0
+
+# Parallel Computing - Dask
+dask>=2023.3.0
+distributed>=2023.3.0
+dask-ml>=2023.3.0
+
+# Parallel Computing - Ray
+# Using newer Ray version that's available in the repository
+ray==2.38.0
+ray[tune]==2.38.0
+ray[data]==2.38.0
+optuna>=3.1.0 
