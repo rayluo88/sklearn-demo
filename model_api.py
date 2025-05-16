@@ -2,6 +2,8 @@ import json
 import numpy as np
 from flask import Flask, request, jsonify, render_template_string
 import mlflow.pyfunc
+# Import model monitoring
+import model_monitoring
 
 app = Flask(__name__)
 
@@ -111,6 +113,25 @@ HTML_TEMPLATE = '''
             border-radius: 4px;
             overflow-x: auto;
         }
+        /* New feedback form styling */
+        .feedback-form {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            display: none;
+        }
+        .feedback-form h3 {
+            margin-top: 0;
+        }
+        .radio-group {
+            margin: 10px 0;
+        }
+        .radio-group label {
+            display: inline;
+            margin-right: 15px;
+            font-weight: normal;
+        }
     </style>
 </head>
 <body>
@@ -139,6 +160,24 @@ HTML_TEMPLATE = '''
             <p id="confidence"></p>
         </div>
         
+        <!-- New feedback form -->
+        <div class="feedback-form" id="feedback-form">
+            <h3>Provide Feedback:</h3>
+            <p>If you know the actual class, please provide feedback to help improve the model:</p>
+            <input type="hidden" id="prediction-id" name="prediction-id">
+            <div class="radio-group">
+                <input type="radio" id="class-0" name="actual-class" value="0">
+                <label for="class-0">Setosa</label>
+                
+                <input type="radio" id="class-1" name="actual-class" value="1">
+                <label for="class-1">Versicolor</label>
+                
+                <input type="radio" id="class-2" name="actual-class" value="2">
+                <label for="class-2">Virginica</label>
+            </div>
+            <button id="submit-feedback">Submit Feedback</button>
+        </div>
+        
         <div class="api-info">
             <h3>API Usage:</h3>
             <p>To use this model programmatically, send a POST request to <code>/predict</code> with the following JSON format:</p>
@@ -157,6 +196,9 @@ HTML_TEMPLATE = '''
             
             <h4>Health Check:</h4>
             <p>GET request to <code>/health</code> returns the model status</p>
+            
+            <h4>Model Monitoring:</h4>
+            <p>View the current model monitoring dashboard at <code>/monitoring</code></p>
         </div>
     </div>
     
@@ -184,11 +226,48 @@ HTML_TEMPLATE = '''
             .then(data => {
                 document.getElementById('prediction').textContent = `Predicted class: ${data.predictions[0]}`;
                 document.getElementById('result').style.display = 'block';
+                
+                // Show feedback form and store prediction ID
+                document.getElementById('prediction-id').value = data.prediction_id;
+                document.getElementById('feedback-form').style.display = 'block';
             })
             .catch((error) => {
                 console.error('Error:', error);
                 document.getElementById('prediction').textContent = `Error: ${error}`;
                 document.getElementById('result').style.display = 'block';
+            });
+        });
+        
+        // Handle feedback submission
+        document.getElementById('submit-feedback').addEventListener('click', function() {
+            const predictionId = document.getElementById('prediction-id').value;
+            const selectedClass = document.querySelector('input[name="actual-class"]:checked');
+            
+            if (!selectedClass) {
+                alert('Please select an actual class');
+                return;
+            }
+            
+            const actualClass = selectedClass.value;
+            
+            fetch('/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    prediction_id: predictionId,
+                    actual_class: parseInt(actualClass)
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Thank you for your feedback!');
+                document.getElementById('feedback-form').style.display = 'none';
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('Error submitting feedback: ' + error);
             });
         });
     </script>
@@ -234,14 +313,104 @@ def predict():
         # Convert numeric predictions to class names
         class_predictions = [CLASS_MAPPING.get(int(pred), f"Unknown-{pred}") for pred in predictions]
         
+        # Log the prediction for monitoring
+        prediction_ids = []
+        for i, (feature, prediction) in enumerate(zip(features, predictions)):
+            # Get model details to log the version
+            model_version = "unknown"
+            try:
+                model_info = MODEL._model_meta.to_dict() if hasattr(MODEL, '_model_meta') else {}
+                model_version = model_info.get('run_id', 'unknown')
+            except:
+                pass
+                
+            # Log the prediction
+            prediction_id = model_monitoring.log_prediction(
+                features=feature,
+                prediction=prediction,
+                model_version=model_version
+            )
+            prediction_ids.append(prediction_id)
+        
         # Return predictions
         return jsonify({
             "predictions": class_predictions,
-            "raw_predictions": predictions.tolist()
+            "raw_predictions": predictions.tolist(),
+            "prediction_id": prediction_ids[0] if len(prediction_ids) == 1 else prediction_ids
         })
         
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    """Endpoint to receive feedback on predictions.
+    
+    Expected JSON format:
+    {
+        "prediction_id": "unique_prediction_id",
+        "actual_class": 0|1|2  # The true class
+    }
+    """
+    try:
+        content = request.json
+        prediction_id = content['prediction_id']
+        actual_class = content['actual_class']
+        
+        # Log the feedback
+        model_monitoring.log_feedback(prediction_id, actual_class)
+        
+        # Check if retraining is needed
+        retraining_needed = model_monitoring.check_retraining_needed()
+        
+        return jsonify({
+            "success": True,
+            "message": "Feedback recorded successfully",
+            "retraining_needed": retraining_needed
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/monitoring', methods=['GET'])
+def monitoring_dashboard():
+    """Serve the monitoring dashboard."""
+    # Generate a fresh monitoring report
+    model_monitoring.generate_monitoring_report()
+    
+    # Read the HTML report
+    try:
+        with open("model_monitoring_report.html", "r") as f:
+            report_html = f.read()
+        return report_html
+    except:
+        return "Error loading monitoring report", 500
+
+@app.route('/trigger-retraining', methods=['POST'])
+def trigger_retraining():
+    """Endpoint to manually trigger model retraining."""
+    try:
+        # Check if retraining is actually needed
+        if not model_monitoring.check_retraining_needed():
+            return jsonify({
+                "success": False,
+                "message": "Retraining not needed based on current metrics"
+            }), 400
+            
+        # Trigger retraining
+        model_details = model_monitoring.trigger_retraining()
+        
+        # Reload the model
+        global MODEL
+        MODEL = load_model()
+        
+        return jsonify({
+            "success": True,
+            "message": f"Model retrained and deployed as version {model_details.version}"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001) 

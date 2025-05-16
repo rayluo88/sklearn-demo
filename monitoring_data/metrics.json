@@ -1,0 +1,30 @@
+{
+  "total_predictions": 150,
+  "predictions_with_feedback": 75,
+  "accuracy": 0.84,
+  "precision": 0.8411764705882353,
+  "recall": 0.8406862745098039,
+  "f1": 0.8393759018759019,
+  "drift_detected": false,
+  "last_updated": "2025-05-03T00:34:03.071647",
+  "per_class": {
+    "setosa": {
+      "precision": 0.8333333333333334,
+      "recall": 0.8823529411764706,
+      "f1": 0.8571428571428571,
+      "sample_count": 17
+    },
+    "versicolor": {
+      "precision": 0.8666666666666667,
+      "recall": 0.7647058823529411,
+      "f1": 0.8125,
+      "sample_count": 17
+    },
+    "virginica": {
+      "precision": 0.8235294117647058,
+      "recall": 0.875,
+      "f1": 0.8484848484848485,
+      "sample_count": 16
+    }
+  }
+}
