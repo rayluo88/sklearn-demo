@@ -10,7 +10,7 @@ This project demonstrates a complete ML workflow from development to deployment:
 
 ## Project Structure
 
-- `simple_ml_pipeline.py` - Main ML pipeline script
+- `simple_ml_pipeline.py` - Main ML pipeline script (uses DVC-tracked data from `data/iris.csv`)
 - `model_registry.py` - Registers models in MLflow Model Registry
 - `model_api.py` - Flask API for model predictions
 - `tests/` - Test directory containing:
@@ -35,6 +35,7 @@ This project demonstrates a complete ML workflow from development to deployment:
 - Python 3.9+
 - Docker (for containerized execution)
 - Git (optional, for versioning)
+- DVC initialized in the project, with `data/iris.csv` (or a similar dataset) tracked.
 
 ### Installation
 
@@ -46,6 +47,15 @@ cd <repository-directory>
 # Install dependencies
 pip install -r requirements.txt
 ```
+
+### Data Setup
+
+Ensure the DVC-tracked data is available. If you have already configured DVC and added `data/iris.csv`:
+```bash
+# Pull the latest version of the data tracked by DVC
+dvc pull
+```
+If `data/iris.csv` is not found after running the pipeline, this command should fetch it, assuming it has been previously added and committed to DVC storage.
 
 ### Running the Pipeline
 
