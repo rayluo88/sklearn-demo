@@ -16,7 +16,10 @@ dask-ml>=2023.3.0
 
 # Parallel Computing - Ray
 # Using newer Ray version that's available in the repository
-ray==2.38.0
-ray[tune]==2.38.0
-ray[data]==2.38.0
-optuna>=3.1.0 
+# Combine Ray extras to avoid resolver issues
+ray[data,tune]==2.38.0
+optuna>=3.1.0
+feast>=0.38.0 # Updated Feast version to allow newer numpy
+
+# Add feast, pinning to a known compatible minor version range
+# Add compatible protobuf version for Feast 

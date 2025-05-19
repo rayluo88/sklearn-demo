@@ -1,0 +1,27 @@
+
+k
+M
+iris_id#Unique ID for an Iris flower sample"iris_idJsklearn_demo_feast
+¡—¨Áøº "¡—¨Áøº "
+G
+)
+__dummy"
+__dummy_idJsklearn_demo_feast
+¡—¨Áðà°"¡—¨Áðà°"1"$c51683f6-009c-41ee-9e98-1a08aaa6eb48*þš¨Á°ûÊÁ2‘
+ß
+iris_featuressklearn_demo_feastiris_id"
+sepal_length"
+sepal_width"
+petal_length"
+petal_width"
+target_class*
+datasetiris2€õ$:²event_timestampZ#!../data/iris_feast_source.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢iris_sourceº5Iris dataset with event timestamps and IDs for Feast.@b
+iris_id-
+¡—¨Á ­¼"þš¨Áà±ŠÁ
+ÝÂ‰¹æ½­ÁR›
+˜
+,feast.infra.online_stores.sqlite.SqliteTable"h
+D/home/ubuntuser/sklearn_demo/feature_repository/data/online_store.db sklearn_demo_feast_iris_featuresbÇevent_timestampZ#!../data/iris_feast_source.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢iris_sourceªsklearn_demo_feastº5Iris dataset with event timestamps and IDs for Feast.Š2
+
+sklearn_demo_feast
+¡—¨Á Þ¬¡—¨Á Þ¬

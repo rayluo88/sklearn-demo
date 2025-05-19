@@ -1,0 +1,9 @@
+project: sklearn_demo_feast # Name of the project, must match Python package name
+registry: data/registry.db # Local path to a metadata store
+provider: local # instructional provider
+offline_store: # Configuration for the offline store (e.g., for training data)
+  type: file
+online_store: # Configuration for the online store (e.g., for serving)
+  type: sqlite
+  path: data/online_store.db
+entity_key_serialization_version: 2 
