@@ -32,3 +32,31 @@ ENV/
 
 # Other
 .DS_Store
+
+# Ray outputs
+ray_results/
+*/ray_results/
+*.pkl
+
+# MLflow outputs
+mlartifacts/
+mlflow_artifacts/
+
+# Weights & Biases
+wandb/
+*/wandb/
+
+# Monitoring and intermediate files
+monitoring_data/
+monitoring_visualizations/
+model_monitoring_report.html
+batch_classification_report.txt
+feature_importance.csv
+
+# Examples data files
+examples/**/data/
+examples/large_datasets/data/
+examples/**/*.csv
+examples/**/*.parquet
+examples/**/*.h5
+examples/**/*.hdf5

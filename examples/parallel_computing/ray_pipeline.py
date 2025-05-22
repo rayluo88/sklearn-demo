@@ -15,12 +15,14 @@ from ray.tune.tuner import Tuner
 from ray.tune.search.optuna import OptunaSearch
 from ray.air.config import RunConfig, ScalingConfig
 from ray.tune.tune_config import TuneConfig
-from ray.train.sklearn import SklearnTrainer
+from ray.util.joblib import register_ray
 
 # Constants
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
 
+# Register Ray as a joblib backend
+register_ray()
 
 def train_model(config):
     """Training function for Ray to distribute."""
@@ -92,7 +94,7 @@ def run_ray_hyperparameter_tuning():
             tune_config=tune_config,
             run_config=RunConfig(
                 name="knn_tuning",
-                local_dir="./ray_results",
+                storage_path=os.path.abspath('./ray_results'),
             )
         )
         
@@ -161,35 +163,60 @@ def run_ray_batch_inference():
         # Create remote tasks for each batch
         prediction_refs = []
         for batch in batches:
-            batch_np = np.array(list(batch.iter_rows()))
+            df = batch.to_pandas()
+            
+            # Skip empty batches
+            if len(df) == 0:
+                continue
+                
+            # Print column names for debugging
+            print(f"DataFrame columns: {df.columns.tolist()}")
+            
+            # In Ray 2.46.0, features are stored in a single 'data' column
+            # Extract and stack the feature arrays properly
+            if 'data' in df.columns:
+                # Extract the data column and create a proper 2D array
+                batch_np = np.stack(df['data'].values)
+            else:
+                # Fallback to the previous approach if structure is different
+                batch_np = df.to_numpy()
+            
+            # Send batch for prediction
             prediction_refs.append(predict_batch.remote(model, batch_np))
         
-        # Get results
-        predictions = ray.get(prediction_refs)
-        
-        # Combine the results
-        all_predictions = np.concatenate(predictions)
-        
-        # 6. Evaluate results
-        accuracy = accuracy_score(y, all_predictions)
-        report = classification_report(y, all_predictions, target_names=iris.target_names)
-        
-        print(f"\nBatch inference accuracy: {accuracy:.4f}")
-        print("\nClassification Report:")
-        print(report)
-        
-        # Log metrics and model
-        mlflow.log_metric("batch_inference_accuracy", accuracy)
-        mlflow.sklearn.log_model(model, "ray-batch-model")
-        
-        # Log classification report as text
-        report_path = "batch_classification_report.txt"
-        with open(report_path, "w") as f:
-            f.write(report)
-        mlflow.log_artifact(report_path)
-        os.remove(report_path)
-        
-        print("\nBatch inference results logged to MLflow")
+        # Make sure we have predictions to process
+        if prediction_refs:
+            # Get results
+            predictions = ray.get(prediction_refs)
+            
+            # Combine the results
+            all_predictions = np.concatenate(predictions) if len(predictions) > 0 else np.array([])
+            
+            # 6. Evaluate results if we have predictions
+            if len(all_predictions) > 0:
+                accuracy = accuracy_score(y, all_predictions)
+                report = classification_report(y, all_predictions, target_names=iris.target_names)
+                
+                print(f"\nBatch inference accuracy: {accuracy:.4f}")
+                print("\nClassification Report:")
+                print(report)
+                
+                # Log metrics and model
+                mlflow.log_metric("batch_inference_accuracy", accuracy)
+                mlflow.sklearn.log_model(model, "ray-batch-model")
+                
+                # Log classification report as text
+                report_path = "batch_classification_report.txt"
+                with open(report_path, "w") as f:
+                    f.write(report)
+                mlflow.log_artifact(report_path)
+                os.remove(report_path)
+                
+                print("\nBatch inference results logged to MLflow")
+            else:
+                print("\nNo predictions generated. Check if batches contain data.")
+        else:
+            print("\nNo prediction tasks created. Check if dataset was split correctly.")
     
     # Shut down Ray
     ray.shutdown()

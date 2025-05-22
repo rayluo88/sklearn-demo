@@ -1,6 +1,7 @@
 numpy
 scikit-learn>=1.0.0
 mlflow>=1.0.0
+wandb>=0.15.0 # For Weights & Biases experiment tracking
 flask>=2.0.0
 gunicorn>=20.1.0
 pytest>=6.0.0
@@ -13,11 +14,12 @@ seaborn>=0.11.0
 dask>=2023.3.0
 distributed>=2023.3.0
 dask-ml>=2023.3.0
+bokeh>=3.1.0
 
 # Parallel Computing - Ray
 # Using newer Ray version that's available in the repository
 # Combine Ray extras to avoid resolver issues
-ray[data,tune]==2.38.0
+ray[data,tune,train]==2.46.0
 optuna>=3.1.0
 feast>=0.38.0 # Updated Feast version to allow newer numpy
 

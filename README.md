@@ -4,15 +4,16 @@ This project demonstrates a complete ML workflow from development to deployment:
 
 1. Data loading and preprocessing
 2. Feature Engineering and Management with a Feature Store (Feast)
-3. Model training with MLflow tracking
-4. Model versioning in the MLflow Registry
+3. Model training with MLflow or Weights & Biases (W&B) tracking
+4. Model versioning in MLflow Registry or W&B Artifacts/Model Registry
 5. Model serving via a REST API (Flask) with online feature lookup (conceptual)
 6. CI/CD pipeline for automated deployment (GitHub Actions)
 7. Continuous Model Monitoring
 
 ## Project Structure
 
-- `simple_ml_pipeline.py` - Main ML pipeline script (uses Feast for feature retrieval)
+- `simple_ml_pipeline.py` - Main ML pipeline script (uses Feast for feature retrieval, tracks with MLflow)
+- `wandb_ml_pipeline.py` - Alternative ML pipeline script (uses Feast, tracks with Weights & Biases)
 - `model_registry.py` - Registers models in MLflow Model Registry
 - `model_api.py` - Flask API for model predictions (integrates with Feast and Model Monitoring)
 - `model_monitoring.py` - Handles continuous model monitoring (drift, performance)
@@ -43,6 +44,8 @@ This project demonstrates a complete ML workflow from development to deployment:
   - `distributed_training/` - Ray-based distributed model training examples
   - `large_datasets/` - Techniques for processing datasets that don't fit in memory
   - `parallel_computing/` - Parallel computing with Dask and Ray for ML workloads
+    - `dask_pipeline.py` - Example of parallel processing with Dask
+    - `ray_pipeline.py` - Example of hyperparameter tuning and batch inference with Ray (compatible with Ray 2.46.0)
 
 ## Getting Started
 
@@ -53,7 +56,10 @@ This project demonstrates a complete ML workflow from development to deployment:
 - Docker (for containerized execution)
 - Git (optional, for versioning)
 - DVC initialized in the project, with `data/iris.csv` (or a similar dataset) tracked.
-- MLflow Tracking Server running (e.g., `mlflow ui --host 0.0.0.0`)
+- For the MLflow pipeline (`simple_ml_pipeline.py`): MLflow Tracking Server running (e.g., `mlflow ui --host 0.0.0.0`)
+- For the Weights & Biases pipeline (`wandb_ml_pipeline.py`):
+    - `wandb` library installed (`pip install wandb`).
+    - Logged into W&B (run `wandb login` in your terminal and follow instructions).
 
 ### Installation
 
@@ -63,7 +69,10 @@ git clone <repository-url>
 cd <repository-directory>
 
 # Install dependencies
+# Consider adding 'wandb' to your requirements.txt if you plan to use the W&B pipeline
 pip install -r requirements.txt
+# If wandb is not in requirements.txt, install it separately:
+# pip install wandb
 ```
 
 #### Conda Environment Setup (Recommended)
@@ -83,7 +92,10 @@ It's highly recommended to use a Conda environment to manage dependencies for th
 
 3.  **Install dependencies into the Conda environment:**
     ```bash
+    # Ensure requirements.txt includes mlflow, feast, scikit-learn, pandas, etc.
+    # Add 'wandb' if you intend to use the Weights & Biases pipeline.
     pip install -r requirements.txt
+    # Or, if not in requirements.txt: pip install wandb
     ```
 
 ### Data Setup
@@ -137,6 +149,8 @@ Before running the main ML pipeline, you need to set up the Feast feature store:
 
 ### Running the Pipeline
 
+This section describes running the original MLflow-based pipeline. See the next section for Weights & Biases.
+
 With the feature store set up and MLflow server running:
 
 ```bash
@@ -149,6 +163,46 @@ python simple_ml_pipeline.py
 # Start the MLflow UI to view experiments (if not already running)
 # mlflow ui --host 0.0.0.0
 ```
+
+### Running the Pipeline with Weights & Biases
+
+This project includes an alternative pipeline script, `wandb_ml_pipeline.py`, that uses [Weights & Biases (W&B)](https://wandb.ai) for experiment tracking, model versioning, and visualization.
+
+**Key Features of the W&B Pipeline:**
+- Connects to the same Feast feature store for feature management
+- Uses RandomForestClassifier with GridSearchCV for hyperparameter optimization
+- Logs metrics, parameters, model artifacts, and training data samples to W&B
+- Supports complete experiment tracking and result visualization
+
+**Prerequisites for W&B:**
+1.  **Install W&B Client**:
+    ```bash
+    pip install wandb
+    ```
+    (Ensure this is added to your `requirements.txt` if you use it regularly).
+2.  **Login to W&B**:
+    You'll need a free W&B account. Run the following in your terminal and follow the prompts to authenticate:
+    ```bash
+    wandb login
+    ```
+
+**Execution:**
+
+Ensure your Feast feature store is set up as described in the "Feature Store Setup (Feast)" section (i.e., `prepare_feast_data.py` has been run, and `feast apply` & `feast materialize` have been executed in the `feature_repository/` directory).
+
+Then, run the W&B pipeline script:
+```bash
+# Train a model using features from Feast and log to Weights & Biases
+python wandb_ml_pipeline.py
+```
+This will execute the pipeline, and all configurations, metrics, and the trained model (as an artifact) will be logged to your W&B project (default: `iris-feast-wandb-demo`). You can view and analyze your runs on the W&B dashboard.
+
+**Benefits of the W&B Pipeline:**
+- Rich visualization dashboard for experiment tracking
+- Easy model versioning and comparison
+- Automatic hyperparameter visualization from GridSearchCV
+- Collaborative features for team settings
+- Integrated model registry
 
 ### Testing the ML Components
 
@@ -216,16 +270,18 @@ The API integrates with `model_monitoring.py`. Predictions and feedback are logg
 ## CI/CD Pipeline
 
 The GitHub Actions workflow automates:
-1. Model training and testing
+1. Model training and testing (currently configured for the MLflow pipeline)
 2. Model registration in MLflow Registry
 3. Building and deploying the prediction API
 
 ## Model Versioning
 
-The project uses MLflow Model Registry for versioning, with stages:
+The project uses MLflow Model Registry by default for versioning, with stages:
 - Staging: Models under evaluation
 - Production: Models deployed to production
 - Archived: Previous model versions
+
+Alternatively, if using the `wandb_ml_pipeline.py` script, Weights & Biases (W&B) is used. W&B Artifacts provide robust model versioning, and W&B also offers a Model Registry for managing model lifecycles. The `wandb_ml_pipeline.py` script logs the trained model as a W&B artifact.
 
 ## Feature Store (Feast)
 
@@ -236,7 +292,7 @@ This project uses Feast for feature management:
 -   **Workflow**:
     1.  `prepare_feast_data.py`: Processes raw data into the format Feast expects.
     2.  `feast apply` (in `feature_repository/`): Registers feature definitions.
-    3.  `simple_ml_pipeline.py`: Retrieves historical features from Feast for model training.
+    3.  `simple_ml_pipeline.py` or `wandb_ml_pipeline.py`: Retrieves historical features from Feast for model training.
     4.  `feast materialize-incremental <date>` (in `feature_repository/`): Loads features into the online store.
     5.  `model_api.py`: (Conceptually) retrieves online features for predictions.
 
@@ -249,7 +305,7 @@ The project includes several example directories showing advanced ML techniques:
 Examples of enhancing the ML pipeline with parallel computing frameworks:
 
 - **Dask Integration** (`dask_pipeline.py`): Parallel data processing and model training with Dask
-- **Ray Integration** (`ray_pipeline.py`): Distributed hyperparameter tuning and batch inference with Ray
+- **Ray Integration** (`ray_pipeline.py`): Distributed hyperparameter tuning and batch inference with Ray 2.46.0
 
 ```bash
 # Run the Dask example
@@ -337,6 +393,11 @@ This project can be extended to use distributed computing frameworks for handlin
    ```bash
    pip install ray ray[tune] ray[air] scikit-learn
    ```
+   
+   The examples in this project are compatible with Ray 2.46.0, which can be installed with:
+   ```bash
+   pip install "ray[data,tune,train]==2.46.0"
+   ```
 
 2. Modify the pipeline for distributed model training:
    ```python
@@ -364,6 +425,8 @@ This project can be extended to use distributed computing frameworks for handlin
    
    # Retrieve and log model with MLflow as usual
    ```
+
+For Ray 2.46.0 and newer versions, the recommended approach is to use Ray's joblib backend for scikit-learn integration rather than the SklearnTrainer. This is demonstrated in the `ray_pipeline.py` example.
 
 ### Distributed Training Examples
 
