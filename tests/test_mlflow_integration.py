@@ -30,8 +30,11 @@ class TestMLflowIntegration(unittest.TestCase):
         # Set MLflow tracking URI to the test directory
         mlflow.set_tracking_uri(self.tracking_uri)
         
-        # Create a new experiment for testing
-        self.experiment_name = "test_experiment"
+        # Use the experiment name from the pipeline
+        self.experiment_name = "Iris Classification with Feast"
+        # Ensure the experiment exists for the tests
+        if mlflow.get_experiment_by_name(self.experiment_name) is None:
+            mlflow.create_experiment(self.experiment_name)
         mlflow.set_experiment(self.experiment_name)
         
         # Load iris dataset for testing
@@ -90,6 +93,7 @@ class TestMLflowIntegration(unittest.TestCase):
         # Get the latest run
         client = MlflowClient()
         experiment = client.get_experiment_by_name(self.experiment_name)
+        self.assertIsNotNone(experiment, f"Experiment '{self.experiment_name}' not found.")
         runs = client.search_runs(experiment_ids=[experiment.experiment_id])
         
         # We should have at least one run
@@ -102,7 +106,9 @@ class TestMLflowIntegration(unittest.TestCase):
         params = latest_run.data.params
         self.assertIn("test_size", params)
         self.assertIn("random_state", params)
-        self.assertIn("n_neighbors", params)
+        self.assertIn("n_estimators", params)
+        self.assertIn("max_depth", params)
+        self.assertIn("min_samples_split", params)
         
         # Check that expected metrics are logged
         metrics = latest_run.data.metrics
@@ -112,8 +118,7 @@ class TestMLflowIntegration(unittest.TestCase):
         # Check that expected artifacts are logged
         artifacts = client.list_artifacts(latest_run.info.run_id)
         artifact_paths = [a.path for a in artifacts]
-        self.assertIn("knn-model", artifact_paths)
-        self.assertIn("classification_report.txt", artifact_paths)
+        self.assertIn("iris-classifier", artifact_paths)
     
     def test_model_loading(self):
         """Test that we can load a model from MLflow."""
@@ -124,16 +129,18 @@ class TestMLflowIntegration(unittest.TestCase):
         # Get the latest run
         client = MlflowClient()
         experiment = client.get_experiment_by_name(self.experiment_name)
+        self.assertIsNotNone(experiment, f"Experiment '{self.experiment_name}' not found.")
         runs = client.search_runs(experiment_ids=[experiment.experiment_id])
         latest_run = runs[0]
         run_id = latest_run.info.run_id
         
         # Load the model
-        model_uri = f"runs:/{run_id}/knn-model"
+        model_uri = f"runs:/{run_id}/iris-classifier"
         loaded_model = mlflow.sklearn.load_model(model_uri)
         
         # Check that it's the right type of model
-        self.assertIsInstance(loaded_model, KNeighborsClassifier)
+        from sklearn.ensemble import RandomForestClassifier
+        self.assertIsInstance(loaded_model, RandomForestClassifier)
         
         # Check that the model can make predictions
         X_test = self.X[:5]  # Use first 5 samples as test
@@ -190,11 +197,12 @@ class TestMLflowIntegration(unittest.TestCase):
         signature = infer_signature(self.X[:5], predictions)
         
         # Log model with signature
-        with mlflow.start_run() as run:
+        with mlflow.start_run(experiment_id=mlflow.get_experiment_by_name(self.experiment_name).experiment_id) as run:
             mlflow.sklearn.log_model(
-                model, 
+                model,
                 "model_with_signature",
-                signature=signature
+                signature=signature,
+                registered_model_name="model_with_signature"
             )
             run_id = run.info.run_id
         
